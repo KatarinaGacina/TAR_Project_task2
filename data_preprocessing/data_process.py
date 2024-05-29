@@ -1,36 +1,14 @@
 import ast
 import re
-from transformers import BertTokenizerFast, BertModel
-from sentence_transformers import SentenceTransformer
-import pandas as pd
-
 import os
 import csv
 
-import torch
+from transformers import BertTokenizerFast
+from sentence_transformers import SentenceTransformer
+
+import pandas as pd
 
 from features import Features
-
-def encode_data(data, pad_index): #tekst_preproccesed
-    tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
-    bert = BertModel.from_pretrained('bert-base-uncased')
-
-    inputs_ids = []
-    
-    for t in data:
-        token_ids = tokenizer.convert_tokens_to_ids(list(t))
-        token_ids = torch.tensor([token_ids])
-        attention_mask = token_ids.ne(pad_index)
-        bert_outputs = bert(input_ids=token_ids, attention_mask=attention_mask)
-        embeddings = bert_outputs.last_hidden_state.detach().cpu().numpy().tolist()[0]
-
-        #input_ids = torch.tensor([token_ids])
-        #inputs_ids.append([input_ids.squeeze()])
-
-        #inputs_ids.append(token_ids)
-        inputs_ids.append(embeddings)
-
-    return inputs_ids
 
 def get_feature_dicts():
     features = Features()
@@ -72,8 +50,6 @@ def preproces_text_and_labels(dict_feature_num, duplicates):
     labels_binary = []
 
     for index, p in patient_df.iterrows():
-        tekst_org = sen_transf.encode(p["pn_history"])
-
         mapa = tokenizer(p["pn_history"], return_offsets_mapping=True)
         off_map = mapa["offset_mapping"][1:-1]
         
@@ -104,18 +80,22 @@ def preproces_text_and_labels(dict_feature_num, duplicates):
                             label_p[index] = feat_num
                             label_b[index] = 1
 
+            tekst_org = sen_transf.encode(p["pn_history"])
+
             tekst_originals.append(tekst_org)
             tekst_preproccesed.append(tekst_p)
             labels.append(label_p)
             labels_binary.append(label_b)
 
+    inputs_ids = []
+    for t in tekst_preproccesed:
+        token_ids = tokenizer.convert_tokens_to_ids(list(t))
+        inputs_ids.append(token_ids)
 
-    rows = zip(tekst_originals, tekst_preproccesed, labels, labels_binary)
-
-    # Write to a CSV file
-    with open('dataset2.csv', 'w', newline='') as file:
+    rows = zip(tekst_originals, inputs_ids, labels, labels_binary)
+    with open('dataset.csv', 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Sentence encoded', 'Words ecoded', 'Labels', 'Labels binary'])  # Write the header
+        writer.writerow(['Sentence encoded', 'Words ecoded', 'Labels', 'Labels binary'])
         writer.writerows(rows)
     
     return tekst_originals, tekst_preproccesed, labels, labels_binary

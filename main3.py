@@ -3,6 +3,8 @@ import os
 
 import pandas as pd
 
+import itertools
+
 import ast
 import csv
 
@@ -54,26 +56,39 @@ def main():
     val_size = len(custom_dataset) - train_size
     train_dataset, val_dataset = random_split(custom_dataset, [train_size, val_size])
 
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=10, shuffle=True, collate_fn=lambda batch: pad_collate_fn_3(batch, pad_index=pad_id))
-    val_dataloader = DataLoader(dataset=val_dataset, batch_size=20, shuffle=True, collate_fn=lambda batch: pad_collate_fn_3(batch, pad_index=pad_id))
+    layers = [1, 2]
+    num_epochs = [50, 100, 120]
+    lrs = [1e-2, 1e-3, 1e-4]
+    batch_sizes = [10, 32, 64]
+    dropouts = [0, 0.2]
+    hidden_dims = [150, 300]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
+    parameter_combinations = itertools.product(layers, num_epochs, lrs, batch_sizes, dropouts, hidden_dims)
+    for parameters in parameter_combinations:
+        num_layer, num_epoch, lr_rate, batch_size, dropout, hidden_dim = parameters
+        print(f"num_layer: {num_layer}, num_epoch: {num_epoch}, lr_rate: {lr_rate}, batch_size: {batch_size}, dropout: {dropout}, hidden_dim: {hidden_dim}")
 
-    model = ModelSeqLab3(vocab_size).to(device)
-    
-    criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        train_dataloader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda batch: pad_collate_fn_3(batch, pad_index=pad_id))
+        val_dataloader = DataLoader(dataset=val_dataset, batch_size=20, shuffle=True, collate_fn=lambda batch: pad_collate_fn_3(batch, pad_index=pad_id))
 
-    print("Training...")
-    for epoch in range(50):
-        loss = train3(train_dataloader, model, device, criterion, optimizer, num_classes)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(device)
 
-        if epoch % 1 == 0:
-            print(f'Epoch {epoch}, Loss: {loss.item()}')
-    torch.save(model.state_dict(), 'model_3.pth')
+        model = ModelSeqLab3(vocab_size, hidden_dim=hidden_dim, dropout=dropout, num_layers=num_layer).to(device)
+        
+        criterion = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr_rate)
 
-    targets_all, predictions_all = eval3(val_dataloader, model, device, criterion, num_classes)
+        print("Training...")
+        for epoch in range(num_epoch):
+            loss = train3(train_dataloader, model, device, criterion, optimizer, num_classes)
+
+            if epoch % 1 == 0:
+                print(f'Epoch {epoch}, Loss: {loss.item()}')
+        #torch.save(model.state_dict(), 'model_3.pth')
+
+        targets_all, predictions_all = eval3(val_dataloader, model, device, criterion, num_classes)
+        print()
 
 if __name__ == "__main__":
     torch.manual_seed(42)

@@ -25,7 +25,7 @@ from torch.utils.data import random_split
 
 from data_process import get_feature_dicts, preproces_text_and_labels
 
-from model import ModelSeqLab, ModelSeqLab2, train, eval
+from model import ModelSeqLab, ModelSeqLab2, train, eval, train_with_validation
 
 def convert_vector_to_list(string_list):
     numbers = string_list.strip('[]').split()
@@ -69,7 +69,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     print("Training...")
-    for epoch in range(10):
+    for epoch in range(1):
         loss = train(train_dataloader, model, device, criterion, optimizer, num_classes)
 
         if epoch % 1 == 0:
@@ -102,10 +102,10 @@ def main2():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    model = ModelSeqLab2(vocab_size).to(device)
+    model = ModelSeqLab2(vocab_size, dropout=0.0).to(device)
     
     criterion = nn.CrossEntropyLoss(ignore_index=133)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     print("Training...")
     for epoch in range(50):
@@ -143,8 +143,44 @@ def main2():
     print(pogodak_nula)
     print(len_nula)
 
+def main2_val():
+    df = pd.read_csv('dataset.csv')
+    tekst_originals = df['Sentence encoded'].apply(lambda x: convert_vector_to_list(x)).tolist()
+    processed_data = df['Words ecoded'].apply(ast.literal_eval)
+    labels = df['Labels'].apply(ast.literal_eval)
+
+    dataset = CustomDataset(processed_data, labels, tekst_originals)
+
+    layers = [2]
+    num_epochs = [50, 120]
+    lrs = [1e-2, 1e-3, 1e-4]
+    batch_sizes = [10, 32]
+    dropouts = [0, 0.2]
+
+    i = 0
+    best_params = {}
+    best_average_metric = 0
+
+    for layer in layers:
+        for epochs in num_epochs:
+            for lr in lrs:
+                for batch_size in batch_sizes:
+                    for dropout in dropouts:
+                        params = {"num_layers": layer, "num_epochs": epochs,
+                                "lr": lr, "batch_size": batch_size,
+                                "dropout": dropout} #, "hidden_dim": hidden_dim}
+                        average_metric = train_with_validation(dataset, params)
+                        if average_metric > best_average_metric:
+                            best_average_metric = average_metric
+                            best_params = params
+                        print(i)
+                        i += 1
+
+    print(best_params, best_average_metric)
+
 if __name__ == "__main__":
-    torch.manual_seed(42)
+    torch.manual_seed(0)
     #preprocess()
     #main()
     main2()
+    #main2_val()

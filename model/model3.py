@@ -4,16 +4,16 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from sklearn.metrics import multilabel_confusion_matrix, precision_score, recall_score, f1_score
 
 class ModelSeqLab3(nn.Module):
-    def __init__(self, vocab_size, num_layers=2, output_size=131):
+    def __init__(self, vocab_size, hidden_dim=150, dropout=0.2, num_layers=2, output_size=131):
         super(ModelSeqLab3, self).__init__()
         self.num_layers = num_layers
 
-        self.hidden_dim = 150
+        self.hidden_dim = hidden_dim
         self.sentence_size = 768
 
         self.translate_sen = nn.Linear(self.sentence_size, self.hidden_dim)
         self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, embedding_dim=self.hidden_dim)
-        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, bidirectional=True, dropout=0.2)
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=self.num_layers, batch_first=True, bidirectional=True, dropout=dropout)
         
         self.fc = nn.Linear(self.hidden_dim * 2, output_size)
 

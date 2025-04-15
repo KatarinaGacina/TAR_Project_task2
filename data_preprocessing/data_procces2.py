@@ -12,7 +12,7 @@ from features import Features
 
 def get_feature_dicts():
     features = Features()
-    features.extract_features("C:\\Users\\User\\Documents\\8.semestar\\APT\\Projekt\\TAR_Project\\data\\features.csv")
+    features.extract_features(".\\data\\features.csv")
 
     dict_features = {}
     dict_feature_num = {}
